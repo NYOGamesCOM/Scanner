@@ -1,637 +1,674 @@
-<html><head><base href="https://inventory.example.com/">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="<%=domain%>/logo.png" />
-    <title>MarkSoft: Inventory Management</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-          font-family: 'Roboto', sans-serif;
-          margin: 0;
-          padding: 0;
-          background-color: #1E1E1E; /* Dark background color */
-          color: #D1D1D1; /* Light text color */
-        }
-        
-        .container {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 20px;
-        }
-        
-        nav {
-          background-color: #2C3E50; /* Slightly lighter dark background for contrast */
-          padding: 10px 0;
-        }
-        
-        nav ul {
-          list-style-type: none;
-          padding: 0;
-          margin: 0;
-          display: flex;
-          justify-content: center;
-        }
-        
-        nav ul li {
-          margin: 0 15px;
-        }
-        
-        nav ul li a {
-          color: #D1D1D1; /* Light color for text */
-          text-decoration: none;
-          font-size: 18px;
-          font-weight: 500;
-          transition: color 0.3s ease;
-        }
-        
-        nav ul li a:hover {
-          color: #3498db; /* Hover color */
-        }
-        
-        .active {
-          border-bottom: 2px solid #3498db; /* Active link underline */
-        }
-        
-        h1, h2 {
-          color: #E0E0E0; /* Light color for headings */
-          text-align: center;
-          margin-bottom: 20px;
-        }
-        
-        #scanner-container {
-          position: relative;
-          width: 100%;
-          max-width: 640px;
-          height: 480px;
-          margin: 20px auto;
-          border: 2px solid #34495e;
-          overflow: hidden;
-          border-radius: 8px;
-        }
-        
-        #live-stream {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-        
-        #result {
-          margin-top: 20px;
-          padding: 15px;
-          background-color: #2C3E50; /* Dark background for results */
-          border: 1px solid #91d5ff;
-          border-radius: 4px;
-          font-size: 16px;
-          color: #D1D1D1; /* Light text color */
-        }
-        
-        #inventory-list-container {
-          margin-top: 30px;
-          background-color: #2C2C2C; /* Darker background for contrast */
-          border: 1px solid #444;
-          border-radius: 4px;
-          overflow: hidden;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        #inventory-list-header {
-          display: grid;
-          grid-template-columns: 1fr 100px 150px 150px;
-          gap: 10px;
-          background-color: #3C3C3C; /* Slightly lighter background for header */
-          color: #D1D1D1;
-          padding: 15px;
-          font-weight: 500;
-          border-bottom: 2px solid #444;
-        }
-        
-        #inventory-list {
-          max-height: 500px;
-          overflow-y: auto;
-          scrollbar-width: thin;
-          scrollbar-color: #555 #1E1E1E; /* Dark scrollbar */
-        }
-        
-        #inventory-list::-webkit-scrollbar {
-          width: 8px;
-        }
-        
-        #inventory-list::-webkit-scrollbar-track {
-          background: #1E1E1E;
-        }
-        
-        #inventory-list::-webkit-scrollbar-thumb {
-          background-color: #555;
-          border-radius: 4px;
-        }
-        
-        .inventory-item {
-          display: grid;
-          grid-template-columns: 1fr 100px 150px 150px;
-          gap: 10px;
-          align-items: center;
-          padding: 12px 15px;
-          border-bottom: 1px solid #444;
-          transition: background-color 0.3s ease;
-        }
-        
-        .inventory-item:nth-child(even) {
-          background-color: #2A2A2A; /* Alternate row color */
-        }
-        
-        .inventory-item:hover {
-          background-color: #3C3C3C; /* Hover effect */
-        }
-        
-        #inventory-chart {
-          margin-top: 40px;
-          padding: 20px;
-          background-color: #2C2C2C; /* Darker background for charts */
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .button {
-          display: inline-block;
-          padding: 10px 20px;
-          background-color: #3498db;
-          color: white;
-          text-align: center;
-          text-decoration: none;
-          font-size: 16px;
-          border-radius: 4px;
-          cursor: pointer;
-          transition: background-color 0.3s, transform 0.1s;
-          border: none;
-          outline: none;
-        }
-        
-        .button:hover {
-          background-color: #2980b9;
-          transform: translateY(-2px);
-        }
-        
-        .button:active {
-          transform: translateY(0);
-        }
-        
-        #manual-entry {
-          margin-top: 30px;
-          padding: 20px;
-          background-color: #2C2C2C; /* Darker background for forms */
-          border-radius: 4px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        #manual-entry input {
-          margin-right: 10px;
-          padding: 10px;
-          border: 1px solid #444;
-          border-radius: 4px;
-          font-size: 16px;
-          background-color: #1E1E1E; /* Darker input background */
-          color: #D1D1D1; /* Light text color */
-        }
-        
-        #camera-error {
-          color: #e74c3c;
-          text-align: center;
-          margin-top: 15px;
-          font-weight: bold;
-        }
-        
-        .new-item {
-          animation: highlight 2s ease-in-out;
-        }
-        
-        @keyframes highlight {
-          0% { background-color: #353535; }
-          100% { background-color: transparent; }
-        }
-        
-        .modal {
-          display: none;
-          position: fixed;
-          z-index: 1000;
-          left: 0;
-          top: 0;
-          width: 100%;
-          height: 100%;
-          overflow: auto;
-          background-color: rgba(0,0,0,0.8);
-          backdrop-filter: blur(5px);
-        }
-        
-        .modal-content {
-          background-color: #2C2C2C; /* Darker modal background */
-          margin: 10% auto;
-          padding: 30px;
-          border: 1px solid #444;
-          width: 90%;
-          max-width: 500px;
-          border-radius: 8px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        }
-        
-        .close {
-          color: #aaa;
-          float: right;
-          font-size: 28px;
-          font-weight: bold;
-          transition: color 0.3s;
-        }
-        
-        .close:hover,
-        .close:focus {
-          color: #D1D1D1;
-          text-decoration: none;
-          cursor: pointer;
-        }
-        
-        #search-filter {
-          margin-bottom: 20px;
-          display: flex;
-          gap: 10px;
-        }
-        
-        #search-input {
-          flex-grow: 1;
-          padding: 10px;
-          border: 1px solid #444;
-          border-radius: 4px;
-          font-size: 16px;
-          background-color: #1E1E1E;
-          color: #D1D1D1;
-        }
-        
-        #export-csv {
-          background-color: #27ae60;
-        }
-        
-        #export-csv:hover {
-          background-color: #219a52;
-        }
-        
-        .content-section {
-          display: none;
-        }
-        
-        .content-section.active {
-          display: block;
-        }
-      </style>
-      
-    </head>
-    <body>
-      <nav>
-        <ul>
-          <li><a href="#home" class="nav-link active" data-target="home">Home</a></li>
-          <li><a href="#goods" class="nav-link" data-target="goods">Goods</a></li>
-        </ul>
-      </nav>
-    
-      <div class="container">
-        <div id="home" class="content-section active">
-          <h1>Inventory Management System</h1>
-          <div id="scanner-container">
-            <video id="live-stream" autoplay playsinline></video>
-          </div>
-          <div id="camera-error"></div>
-          <div id="result"></div>
-          <button id="toggle-scanner" class="button">Start/Stop Scanner</button>
-          <div id="manual-entry">
-            <h2>Manual Entry</h2>
-            <input type="text" id="item-name" placeholder="Item Name">
-            <input type="number" id="item-quantity" placeholder="Quantity">
-            <button id="add-item" class="button">Add Item</button>
-          </div>
-        </div>
-    
-        <div id="goods" class="content-section">
-          <h2>Current Inventory</h2>
-          <div id="search-filter">
-            <input type="text" id="search-input" placeholder="Search inventory...">
-            <button id="export-csv" class="button">Export CSV</button>
-          </div>
-          <div id="inventory-list-container">
-            <div id="inventory-list-header">
-              <div>Item Name</div>
-              <div>Quantity</div>
-              <div>Barcode</div>
-              <div>Last Updated</div>
-            </div>
-            <div id="inventory-list"></div>
-          </div>
-          <div id="inventory-chart">
-            <canvas id="inventory-bar-chart"></canvas>
-          </div>
-        </div>
+<html>
+
+<head>
+  <base href="https://inventory.example.com/">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="<%=domain%>/logo.png" />
+  <title>MarkSoft: Inventory Management</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #1E1E1E;
+      /* Dark background color */
+      color: #D1D1D1;
+      /* Light text color */
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    nav {
+      background-color: #2C3E50;
+      /* Slightly lighter dark background for contrast */
+      padding: 10px 0;
+    }
+
+    nav ul {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+    }
+
+    nav ul li {
+      margin: 0 15px;
+    }
+
+    nav ul li a {
+      color: #D1D1D1;
+      /* Light color for text */
+      text-decoration: none;
+      font-size: 18px;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    nav ul li a:hover {
+      color: #3498db;
+      /* Hover color */
+    }
+
+    .active {
+      border-bottom: 2px solid #3498db;
+      /* Active link underline */
+    }
+
+    h1,
+    h2 {
+      color: #E0E0E0;
+      /* Light color for headings */
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    #scanner-container {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      height: 480px;
+      margin: 20px auto;
+      border: 2px solid #34495e;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    #live-stream {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #2C3E50;
+      /* Dark background for results */
+      border: 1px solid #91d5ff;
+      border-radius: 4px;
+      font-size: 16px;
+      color: #D1D1D1;
+      /* Light text color */
+    }
+
+    #inventory-list-container {
+      margin-top: 30px;
+      background-color: #2C2C2C;
+      /* Darker background for contrast */
+      border: 1px solid #444;
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #inventory-list-header {
+      display: grid;
+      grid-template-columns: 1fr 100px 150px 150px;
+      gap: 10px;
+      background-color: #3C3C3C;
+      /* Slightly lighter background for header */
+      color: #D1D1D1;
+      padding: 15px;
+      font-weight: 500;
+      border-bottom: 2px solid #444;
+    }
+
+    #inventory-list {
+      max-height: 500px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #555 #1E1E1E;
+      /* Dark scrollbar */
+    }
+
+    #inventory-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #inventory-list::-webkit-scrollbar-track {
+      background: #1E1E1E;
+    }
+
+    #inventory-list::-webkit-scrollbar-thumb {
+      background-color: #555;
+      border-radius: 4px;
+    }
+
+    .inventory-item {
+      display: grid;
+      grid-template-columns: 1fr 100px 150px 150px;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 15px;
+      border-bottom: 1px solid #444;
+      transition: background-color 0.3s ease;
+    }
+
+    .inventory-item:nth-child(even) {
+      background-color: #2A2A2A;
+      /* Alternate row color */
+    }
+
+    .inventory-item:hover {
+      background-color: #3C3C3C;
+      /* Hover effect */
+    }
+
+    #inventory-chart {
+      margin-top: 40px;
+      padding: 20px;
+      background-color: #2C2C2C;
+      /* Darker background for charts */
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .button {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #3498db;
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.1s;
+      border: none;
+      outline: none;
+    }
+
+    .button:hover {
+      background-color: #2980b9;
+      transform: translateY(-2px);
+    }
+
+    .button:active {
+      transform: translateY(0);
+    }
+
+    #manual-entry {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: #2C2C2C;
+      /* Darker background for forms */
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #manual-entry input {
+      margin-right: 10px;
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      font-size: 16px;
+      background-color: #1E1E1E;
+      /* Darker input background */
+      color: #D1D1D1;
+      /* Light text color */
+    }
+
+    #camera-error {
+      color: #e74c3c;
+      text-align: center;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    .new-item {
+      animation: highlight 2s ease-in-out;
+    }
+
+    @keyframes highlight {
+      0% {
+        background-color: #353535;
+      }
+
+      100% {
+        background-color: transparent;
+      }
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+      background-color: #2C2C2C;
+      /* Darker modal background */
+      margin: 10% auto;
+      padding: 30px;
+      border: 1px solid #444;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      transition: color 0.3s;
+    }
+
+    .close:hover,
+    .close:focus {
+      color: #D1D1D1;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    #search-filter {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    #search-input {
+      flex-grow: 1;
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      font-size: 16px;
+      background-color: #1E1E1E;
+      color: #D1D1D1;
+    }
+
+    #export-csv {
+      background-color: #27ae60;
+    }
+
+    #export-csv:hover {
+      background-color: #219a52;
+    }
+
+    .content-section {
+      display: none;
+    }
+
+    .content-section.active {
+      display: block;
+    }
+  </style>
+
+</head>
+
+<body>
+  <nav>
+    <ul>
+      <li><a href="#home" class="nav-link active" data-target="home">Home</a></li>
+      <li><a href="#goods" class="nav-link" data-target="goods">Goods</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+    <div id="home" class="content-section active">
+      <h1>Inventory Management System</h1>
+      <div id="scanner-container">
+        <video id="live-stream" autoplay playsinline></video>
       </div>
-    
-      <div id="barcodeModal" class="modal">
-        <div class="modal-content">
-          <span class="close">&times;</span>
-          <h2>New Barcode Detected</h2>
-          <p>Barcode: <span id="detected-barcode"></span></p>
-          <input type="text" id="barcode-item-name" placeholder="Item Name">
-          <input type="number" id="barcode-item-quantity" placeholder="Quantity">
-          <button id="add-barcode-item" class="button">Add Item</button>
-        </div>
+      <div id="camera-error"></div>
+      <div id="result"></div>
+      <button id="toggle-scanner" class="button">Start/Stop Scanner</button>
+      <div id="manual-entry">
+        <h2>Manual Entry</h2>
+        <input type="text" id="item-name" placeholder="Item Name">
+        <input type="number" id="item-quantity" placeholder="Quantity">
+        <button id="add-item" class="button">Add Item</button>
       </div>
-    
-      <script>
-        const inventoryList = document.getElementById('inventory-list');
-        const result = document.getElementById('result');
-        const toggleScannerBtn = document.getElementById('toggle-scanner');
-        const addItemBtn = document.getElementById('add-item');
-        const itemNameInput = document.getElementById('item-name');
-        const itemQuantityInput = document.getElementById('item-quantity');
-        const cameraError = document.getElementById('camera-error');
-        const modal = document.getElementById('barcodeModal');
-        const closeModal = document.getElementsByClassName('close')[0];
-        const detectedBarcodeSpan = document.getElementById('detected-barcode');
-        const barcodeItemNameInput = document.getElementById('barcode-item-name');
-        const barcodeItemQuantityInput = document.getElementById('barcode-item-quantity');
-        const addBarcodeItemBtn = document.getElementById('add-barcode-item');
-        const searchInput = document.getElementById('search-input');
-        const exportCsvBtn = document.getElementById('export-csv');
-        const navLinks = document.querySelectorAll('.nav-link');
-        const contentSections = document.querySelectorAll('.content-section');
-        let isScannerRunning = false;
-        let inventoryChart;
-        let inventory = [];
-        let lastScannedBarcode = null;
-    
-        // Navigation
-        navLinks.forEach(link => {
-          link.addEventListener('click', (e) => {
-            e.preventDefault();
-            navLinks.forEach(l => l.classList.remove('active'));
-            link.classList.add('active');
-            const targetId = link.getAttribute('data-target');
-            contentSections.forEach(section => {
-              section.classList.remove('active');
-              if (section.id === targetId) {
-                section.classList.add('active');
-              }
-            });
-            if (targetId === 'goods') {
-              updateInventoryChart();
-            }
-          });
+    </div>
+
+    <div id="goods" class="content-section">
+      <h2>Current Inventory</h2>
+      <div id="search-filter">
+        <input type="text" id="search-input" placeholder="Search inventory...">
+        <button id="export-csv" class="button">Export CSV</button>
+      </div>
+      <div id="inventory-list-container">
+        <div id="inventory-list-header">
+          <div>Item Name</div>
+          <div>Quantity</div>
+          <div>Barcode</div>
+          <div>Last Updated</div>
+        </div>
+        <div id="inventory-list"></div>
+      </div>
+      <div id="inventory-chart">
+        <canvas id="inventory-bar-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div id="barcodeModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>New Barcode Detected</h2>
+      <p>Barcode: <span id="detected-barcode"></span></p>
+      <input type="text" id="barcode-item-name" placeholder="Item Name">
+      <input type="number" id="barcode-item-quantity" placeholder="Quantity">
+      <button id="add-barcode-item" class="button">Add Item</button>
+    </div>
+  </div>
+  <audio id="scanner-sound" src="scanner.mp3" preload="auto"></audio>
+  <script>
+    const inventoryList = document.getElementById('inventory-list');
+    const result = document.getElementById('result');
+    const toggleScannerBtn = document.getElementById('toggle-scanner');
+    const addItemBtn = document.getElementById('add-item');
+    const itemNameInput = document.getElementById('item-name');
+    const itemQuantityInput = document.getElementById('item-quantity');
+    const cameraError = document.getElementById('camera-error');
+    const modal = document.getElementById('barcodeModal');
+    const closeModal = document.getElementsByClassName('close')[0];
+    const detectedBarcodeSpan = document.getElementById('detected-barcode');
+    const barcodeItemNameInput = document.getElementById('barcode-item-name');
+    const barcodeItemQuantityInput = document.getElementById('barcode-item-quantity');
+    const addBarcodeItemBtn = document.getElementById('add-barcode-item');
+    const searchInput = document.getElementById('search-input');
+    const exportCsvBtn = document.getElementById('export-csv');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const contentSections = document.querySelectorAll('.content-section');
+    const scannerSound = document.getElementById('scanner-sound');
+    let isScannerRunning = false;
+    let inventoryChart;
+    let inventory = [];
+    let lastScannedBarcode = null;
+
+    // Navigation
+    navLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        navLinks.forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+        const targetId = link.getAttribute('data-target');
+        contentSections.forEach(section => {
+          section.classList.remove('active');
+          if (section.id === targetId) {
+            section.classList.add('active');
+          }
         });
-    
-        // Initialize barcode scanner
-        function initScanner() {
-          Quagga.init({
-            inputStream: {
-              name: "Live",
-              type: "LiveStream",
-              target: document.querySelector("#live-stream"),
-              constraints: {
-                width: 640,
-                height: 480,
-                facingMode: "environment"
-              },
-            },
-            decoder: {
-              readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader", "code_39_vin_reader", "codabar_reader", "upc_reader", "upc_e_reader", "i2of5_reader"]
-            }
-          }, function(err) {
-            if (err) {
-              console.error(err);
-              cameraError.textContent = "Error accessing the camera. Please check your camera permissions.";
-              return;
-            }
-            cameraError.textContent = "";
-            isScannerRunning = true;
-            Quagga.start();
-          });
+        if (targetId === 'goods') {
+          updateInventoryChart();
         }
-    
-        // Toggle scanner
-        toggleScannerBtn.addEventListener('click', () => {
-          if (isScannerRunning) {
-            Quagga.stop();
-            isScannerRunning = false;
-            toggleScannerBtn.textContent = "Start Scanner";
-          } else {
-            initScanner();
-            toggleScannerBtn.textContent = "Stop Scanner";
-          }
-        });
-    
-        // Listen for barcode detection
-        Quagga.onDetected((data) => {
-          const code = data.codeResult.code;
-          result.textContent = `Barcode detected: ${code}`;
-          handleDetectedBarcode(code);
-        });
-    
-        function handleDetectedBarcode(code) {
-          const existingItem = inventory.find(item => item.barcode === code);
-          if (existingItem) {
-            result.textContent = `Barcode ${code} already exists for item: ${existingItem.name}`;
-          } else {
-            lastScannedBarcode = code;
-            detectedBarcodeSpan.textContent = code;
-            barcodeItemNameInput.value = '';
-            barcodeItemQuantityInput.value = '';
-            modal.style.display = "block";
-          }
+      });
+    });
+
+    // Initialize barcode scanner
+    function initScanner() {
+      Quagga.init({
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: document.querySelector("#live-stream"),
+          constraints: {
+            width: 640,
+            height: 480,
+            facingMode: "environment"
+          },
+        },
+        decoder: {
+          readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader", "code_39_vin_reader", "codabar_reader", "upc_reader", "upc_e_reader", "i2of5_reader"]
         }
-    
-        // Close modal
-        closeModal.onclick = function() {
-          modal.style.display = "none";
+      }, function (err) {
+        if (err) {
+          console.error(err);
+          cameraError.textContent = "Error accessing the camera. Please check your camera permissions.";
+          return;
         }
-    
-        window.onclick = function(event) {
-          if (event.target == modal) {
-            modal.style.display = "none";
-          }
+        cameraError.textContent = "";
+        isScannerRunning = true;
+        Quagga.start();
+      });
+    }
+
+    // Toggle scanner
+    toggleScannerBtn.addEventListener('click', () => {
+      if (isScannerRunning) {
+        Quagga.stop();
+        isScannerRunning = false;
+        toggleScannerBtn.textContent = "Start Scanner";
+      } else {
+        initScanner();
+        toggleScannerBtn.textContent = "Stop Scanner";
+      }
+    });
+
+    // Listen for barcode detection
+    Quagga.onDetected((data) => {
+      const code = data.codeResult.code;
+      result.textContent = `Barcode detected: ${code}`;
+      playScannerSound(); // Play sound on detection
+      handleDetectedBarcode(code);
+    });
+
+    function playScannerSound() {
+      scannerSound.play();
+    }
+
+    function handleDetectedBarcode(code) {
+      const existingItem = inventory.find(item => item.barcode === code);
+      if (existingItem) {
+        result.textContent = `Barcode ${code} already exists for item: ${existingItem.name}`;
+      } else {
+        lastScannedBarcode = code;
+        detectedBarcodeSpan.textContent = code;
+        barcodeItemNameInput.value = '';
+        barcodeItemQuantityInput.value = '';
+        modal.style.display = "block";
+      }
+    }
+
+    // Close modal
+    closeModal.onclick = function () {
+      modal.style.display = "none";
+    }
+
+    window.onclick = function (event) {
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+    }
+
+    // Add barcode item
+    addBarcodeItemBtn.addEventListener('click', () => {
+      const name = barcodeItemNameInput.value.trim();
+      const quantity = parseInt(barcodeItemQuantityInput.value);
+      if (name && !isNaN(quantity) && lastScannedBarcode) {
+        inventory.push({name, quantity, barcode: lastScannedBarcode, lastUpdated: new Date()});
+        updateInventoryList();
+        updateInventoryChart();
+        modal.style.display = "none";
+        lastScannedBarcode = null;
+      }
+    });
+
+    // Manual item entry
+    addItemBtn.addEventListener('click', () => {
+      const name = itemNameInput.value.trim();
+      const quantity = parseInt(itemQuantityInput.value);
+      if (name && !isNaN(quantity)) {
+        const existingItem = inventory.find(item => item.name === name);
+        if (existingItem) {
+          existingItem.quantity += quantity;
+          existingItem.lastUpdated = new Date();
+        } else {
+          inventory.push({name, quantity, lastUpdated: new Date()});
         }
-    
-        // Add barcode item
-        addBarcodeItemBtn.addEventListener('click', () => {
-          const name = barcodeItemNameInput.value.trim();
-          const quantity = parseInt(barcodeItemQuantityInput.value);
-          if (name && !isNaN(quantity) && lastScannedBarcode) {
-            inventory.push({ name, quantity, barcode: lastScannedBarcode, lastUpdated: new Date() });
-            updateInventoryList();
-            updateInventoryChart();
-            modal.style.display = "none";
-            lastScannedBarcode = null;
-          }
-        });
-    
-        // Manual item entry
-        addItemBtn.addEventListener('click', () => {
-          const name = itemNameInput.value.trim();
-          const quantity = parseInt(itemQuantityInput.value);
-          if (name && !isNaN(quantity)) {
-            const existingItem = inventory.find(item => item.name === name);
-            if (existingItem) {
-              existingItem.quantity += quantity;
-              existingItem.lastUpdated = new Date();
-            } else {
-              inventory.push({ name, quantity, lastUpdated: new Date() });
-            }
-            updateInventoryList();
-            updateInventoryChart();
-            itemNameInput.value = '';
-            itemQuantityInput.value = '';
-          }
-        });
-    
-        function updateInventoryList(filter = '') {
-          inventoryList.innerHTML = '';
-          const filteredInventory = inventory.filter(item => 
-            item.name.toLowerCase().includes(filter.toLowerCase()) ||
-            (item.barcode && item.barcode.includes(filter))
-          );
-          filteredInventory.forEach((item, index) => {
-            const itemElement = document.createElement('div');
-            itemElement.classList.add('inventory-item');
-            if (index === inventory.length - 1) {
-              itemElement.classList.add('new-item');
-            }
-            itemElement.innerHTML = `
+        updateInventoryList();
+        updateInventoryChart();
+        itemNameInput.value = '';
+        itemQuantityInput.value = '';
+      }
+    });
+
+    function updateInventoryList(filter = '') {
+      inventoryList.innerHTML = '';
+      const filteredInventory = inventory.filter(item =>
+        item.name.toLowerCase().includes(filter.toLowerCase()) ||
+        (item.barcode && item.barcode.includes(filter))
+      );
+      filteredInventory.forEach((item, index) => {
+        const itemElement = document.createElement('div');
+        itemElement.classList.add('inventory-item');
+        if (index === inventory.length - 1) {
+          itemElement.classList.add('new-item');
+        }
+        itemElement.innerHTML = `
               <div>${item.name}</div>
               <div>${item.quantity}</div>
               <div>${item.barcode || 'N/A'}</div>
               <div>${item.lastUpdated.toLocaleString()}</div>
             `;
-            inventoryList.appendChild(itemElement);
-          });
-        }
-    
-        function updateInventoryChart() {
-          const ctx = document.getElementById('inventory-bar-chart').getContext('2d');
-          const sortedInventory = [...inventory].sort((a, b) => b.quantity - a.quantity).slice(0, 10);
-          const labels = sortedInventory.map(item => item.name);
-          const data = sortedInventory.map(item => item.quantity);
-    
-          if (inventoryChart) {
-            inventoryChart.destroy();
-          }
-    
-          inventoryChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels: labels,
-              datasets: [{
-                label: 'Top 10 Items by Quantity',
-                data: data,
-                backgroundColor: 'rgba(54, 162, 235, 0.8)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-              }]
+        inventoryList.appendChild(itemElement);
+      });
+    }
+
+    function updateInventoryChart() {
+      const ctx = document.getElementById('inventory-bar-chart').getContext('2d');
+      const sortedInventory = [...inventory].sort((a, b) => b.quantity - a.quantity).slice(0, 10);
+      const labels = sortedInventory.map(item => item.name);
+      const data = sortedInventory.map(item => item.quantity);
+
+      if (inventoryChart) {
+        inventoryChart.destroy();
+      }
+
+      inventoryChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Top 10 Items by Quantity',
+            data: data,
+            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Quantity',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                }
+              },
+              ticks: {
+                precision: 0
+              }
             },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  title: {
-                    display: true,
-                    text: 'Quantity',
-                    font: {
-                      size: 14,
-                      weight: 'bold'
-                    }
-                  },
-                  ticks: {
-                    precision: 0
-                  }
-                },
-                x: {
-                  title: {
-                    display: true,
-                    text: 'Item Name',
-                    font: {
-                      size: 14,
-                      weight: 'bold'
-                    }
-                  }
+            x: {
+              title: {
+                display: true,
+                text: 'Item Name',
+                font: {
+                  size: 14,
+                  weight: 'bold'
                 }
-              },
-              plugins: {
-                legend: {
-                  display: false
-                },
-                title: {
-                  display: true,
-                  text: 'Top 10 Inventory Items by Quantity',
-                  font: {
-                    size: 18,
-                    weight: 'bold'
-                  }
-                },
-                tooltip: {
-                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                  titleFont: {
-                    size: 16,
-                    weight: 'bold'
-                  },
-                  bodyFont: {
-                    size: 14
-                  },
-                  displayColors: false
-                }
-              },
-              animation: {
-                duration: 1500,
-                easing: 'easeInOutQuart'
               }
             }
-          });
-        }
-    
-        // Search functionality
-        searchInput.addEventListener('input', (e) => {
-          updateInventoryList(e.target.value);
-        });
-    
-        // Export to CSV
-        exportCsvBtn.addEventListener('click', () => {
-          const csv = Papa.unparse(inventory);
-          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-          const link = document.createElement("a");
-          if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", "inventory.csv");
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            title: {
+              display: true,
+              text: 'Top 10 Inventory Items by Quantity',
+              font: {
+                size: 18,
+                weight: 'bold'
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              titleFont: {
+                size: 16,
+                weight: 'bold'
+              },
+              bodyFont: {
+                size: 14
+              },
+              displayColors: false
+            }
+          },
+          animation: {
+            duration: 1500,
+            easing: 'easeInOutQuart'
           }
-        });
-    
-        // Initialize empty inventory
-        updateInventoryList();
-        updateInventoryChart();
-    
-        // Initialize the scanner
-        initScanner();
-    
-        // Fallback to user media API if Quagga fails
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-            .then(function(stream) {
-              const video = document.getElementById('live-stream');
-              video.srcObject = stream;
-              video.play();
-            })
-            .catch(function(error) {
-              console.error("Error accessing the camera:", error);
-              cameraError.textContent = "Error accessing the camera. Please check your camera permissions.";
-            });
         }
-      </script>
-    </body></html>
+      });
+    }
+
+    // Search functionality
+    searchInput.addEventListener('input', (e) => {
+      updateInventoryList(e.target.value);
+    });
+
+    // Export to CSV
+    exportCsvBtn.addEventListener('click', () => {
+      const csv = Papa.unparse(inventory);
+      const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+      const link = document.createElement("a");
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "inventory.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    });
+
+    // Initialize empty inventory
+    updateInventoryList();
+    updateInventoryChart();
+
+    // Initialize the scanner
+    initScanner();
+
+    // Fallback to user media API if Quagga fails
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}})
+        .then(function (stream) {
+          const video = document.getElementById('live-stream');
+          video.srcObject = stream;
+          video.play();
+        })
+        .catch(function (error) {
+          console.error("Error accessing the camera:", error);
+          cameraError.textContent = "Error accessing the camera. Please check your camera permissions.";
+        });
+    }
+  </script>
+</body>
+
+</html>
